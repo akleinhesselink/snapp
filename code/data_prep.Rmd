@@ -10,6 +10,13 @@ rm(list = ls())
 require( tidyverse)
 
 responses <- read_csv('../raw_data/snapp_responses-toAndy.csv')  # largest list of responses 
+user_info <- read_csv('../raw_data/snapp_users_noemail.csv')     # list of user information 
+taxa_info <- read_csv('../raw_data/species incl mivs for Andy out.csv')  # list of taxonomic information for taxa in photos and taxa not in photos 
+responses_2  <- read_csv('../raw_data/snapp_responses_out-corr-only100spp-toErol.csv') # includes photo region information 
+responses_3  <- read_csv('../raw_data/DT.sm100.csv')   # includes user region information 
+
+
+# save some duplicates: 
 
 responses %>% 
   group_by( user_id, filename, created_at, answer ) %>% 
@@ -18,11 +25,6 @@ responses %>%
   filter( n_duplicate_rows > 1 ) %>% 
   write_csv('~/Desktop/duplicate_snapp_responses_to_check.csv') 
 
-
-user_info <- read_csv('../raw_data/snapp_users_noemail.csv')     # list of user information 
-taxa_info <- read_csv('../raw_data/species incl mivs for Andy out.csv')  # list of taxonomic information for taxa in photos and taxa not in photos 
-responses_2  <- read_csv('../raw_data/snapp_responses_out-corr-only100spp-toErol.csv') # includes photo region information 
-responses_3  <- read_csv('../raw_data/DT.sm100.csv')   # includes user region information 
 
 # !!! Some repeats of the exact same user, time, filename and answer!!!! 
 responses %>% 
@@ -34,13 +36,20 @@ responses %>%
 
 # remove duplicates 
 ```{r }
+
 responses <- 
   responses %>% 
-  distinct()  # keep distinct only 
+  group_by( user_id, filename, created_at, answer, score ) %>% 
+  mutate( n = n() )  %>% 
+  arrange(desc(n)) %>% 
+  filter( row_number() == 1 )  %>% # take only the first record of each group
+  select( -n ) %>% 
+  ungroup() %>% 
+  distinct() 
 
 
 responses %>% 
-  group_by( user_id, `user_time(ms)`, answer, created_at, filename, score ) %>% 
+  group_by( user_id, filename, created_at, answer, score ) %>% 
   mutate( n = n() )  %>% 
   arrange(desc(n))
 
@@ -323,18 +332,22 @@ response_data <-
   mutate( score = ifelse( is.na(photo_key), NA, score ))  %>%                # Score is NA where no key_taxa are provided
   distinct() 
 
+# Show any repeats that exist 
+response_data %>% 
+  group_by( id, filename,  datetime2, filename, response, score ) %>% 
+  mutate( n = n()) %>% 
+  arrange( desc(n))
 
-
-
-#  left_join( responses_3 %>% distinct(id, filename, datetime), by = c('id', 'filename'))
-
-
-response_data %>% group_by( id, filename,  datetime2, filename, response, score ) %>% mutate( n = n()) %>% arrange( desc(n))
-
-photo_order %>% 
-  group_by( id, filename , datetime ) %>% mutate( n = n() ) %>% filter( n > 1)
-
-responses %>% nrow()
-response_data %>% nrow()
 
 ```
+
+## save data for analysis 
+
+```{r}
+
+response_data %>% 
+  write_csv('../output/cleaned_response_data.csv')
+
+
+```
+
