@@ -1,7 +1,8 @@
 rm(list = ls())
 library(tidyverse)
 library(brms)
-load( 'Data/snake_data.rda')
+
+responses <- read_csv( 'output/cleaned_response_data.csv')
 
 # User responses are graded as: 
 #   0: family incorrect or skipped
@@ -9,12 +10,26 @@ load( 'Data/snake_data.rda')
 #   2: genus correct 
 #   3: binomial correct 
 
+responses %>% View
+
+# Show number "inCSchallenge"
+responses %>% 
+  group_by( inCSchallenge) %>% 
+  summarise( n() )
+
+# Filter out questions where "inCSchallenge" = 0 (FALSE)
 responses <- 
-  snake %>% 
-  left_join(user_info, by = 'user_id') %>% 
-  mutate( not_skipped = 1 - skip , home_region = user_region == global_region ) %>% 
-  mutate( score = not_skipped*( family_correct + genus_correct + binomial_correct)) %>% 
-  select( user_id, user_region, home_region, user_time_sec, filename, mivs, key_family, global_region, not_skipped, family_correct, genus_correct, binomial_correct, score ) 
+  responses %>% 
+  filter( inCSchallenge == 1)
+
+# Exclude users with no region: 
+responses %>% 
+  group_by( user_region ) %>% 
+  summarise(n())
+
+responses <- 
+  responses %>% 
+  filter( !is.na(user_region)) 
 
 # Setting up model: 
 #   Based on Burkner (2020), I believe the best way to analyze the tests
@@ -23,11 +38,11 @@ responses <-
 #   and question covariates ( snake region or family). 
 
 # Relabeling user and question
-#   To make interpretation a little neater I will recode user ID and question (filename) as integers 
+#   To make interpretation neater I recode user ID and question (filename) as integers 
 #   We will use the standard names "id" and "item" for the user and question respectively.  This 
 #   matches the terminology used in IRT. 
 
-responses$id <- as.numeric( factor( responses$user_id ) )
+responses$id <- as.numeric( factor( responses$id ) )
 responses$item <- as.numeric( factor( responses$filename ) )
 responses$score <- factor(responses$score, levels = c(0, 1, 2, 3), ordered = T)
 
@@ -35,7 +50,7 @@ responses$score <- factor(responses$score, levels = c(0, 1, 2, 3), ordered = T)
 # model development.  (reduce wait time for sampling). 
 set.seed(1)
 
-responses$fold <- loo::kfold_split_grouped(5, x = responses$id )
+responses$fold <- loo::kfold_split_grouped(4, x = responses$id )
 
 train_sample <- 
   responses %>% 

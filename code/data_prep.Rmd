@@ -9,7 +9,7 @@ This script reads in the SNAPP results and prepares covariates for analysis.
 rm(list = ls())
 require( tidyverse)
 
-responses <- read_csv('../raw_data/snapp_responses-toAndy.csv')  # largest list of responses 
+responses <- read_tsv('../raw_data/snapp_responses.txt')  # largest list of responses 
 user_info <- read_csv('../raw_data/snapp_users_noemail.csv')     # list of user information 
 taxa_info <- read_csv('../raw_data/species incl mivs for Andy out.csv')  # list of taxonomic information for taxa in photos and taxa not in photos 
 responses_2  <- read_csv('../raw_data/snapp_responses_out-corr-only100spp-toErol.csv') # includes photo region information 
@@ -19,7 +19,7 @@ responses_3  <- read_csv('../raw_data/DT.sm100.csv')   # includes user region in
 # save some duplicates: 
 
 responses %>% 
-  group_by( user_id, filename, created_at, answer ) %>% 
+  group_by( user_id, filename, created_at ) %>% 
   mutate( n_duplicate_rows = n() ) %>% 
   arrange( desc(n_duplicate_rows), user_id, filename) %>% 
   filter( n_duplicate_rows > 1 ) %>% 
@@ -28,7 +28,7 @@ responses %>%
 
 # !!! Some repeats of the exact same user, time, filename and answer!!!! 
 responses %>% 
-  group_by( user_id, `user_time(ms)`, answer, created_at, filename, score ) %>% 
+  group_by( user_id, `user_time(ms)`, created_at, filename ) %>% 
   mutate( n = n() )  %>% 
   arrange(desc(n)) 
 
@@ -37,11 +37,13 @@ responses %>%
 # remove duplicates 
 ```{r }
 
-responses <- 
+#responses <- 
   responses %>% 
-  group_by( user_id, filename, created_at, answer, score ) %>% 
+  group_by( user_id, filename, created_at) %>% 
   mutate( n = n() )  %>% 
-  arrange(desc(n)) %>% 
+  arrange( desc(n)) %>% View 
+
+
   filter( row_number() == 1 )  %>% # take only the first record of each group
   select( -n ) %>% 
   ungroup() %>% 
@@ -49,7 +51,7 @@ responses <-
 
 
 responses %>% 
-  group_by( user_id, filename, created_at, answer, score ) %>% 
+  group_by( user_id, filename, created_at) %>% 
   mutate( n = n() )  %>% 
   arrange(desc(n))
 
@@ -98,10 +100,9 @@ responses_3 %>% # note that fewer records are included
 
 ## Rename some columns 
 ```{r}
-
 responses <- 
   responses %>% 
-  rename( 'response' = answer , 'id' = user_id)
+  rename( 'response' = answer , 'id' = user_id, response_time = `user_time(ms)` )
 
 responses_3 <- 
   responses_3 %>% 
@@ -181,7 +182,7 @@ all_taxa_info <-
   gather(taxonomic_level, taxa, c(family, genus, binomial)) %>% 
   select( taxa, taxonomic_level, inCSchallenge, mivs ) %>% 
   group_by( taxa, taxonomic_level) %>% 
-  mutate(   mivs = ifelse( taxonomic_level != 'binomial' & n_distinct(mivs) > 1, 'ambiguous', mivs),  # classify mivs at higher taxonomic levels (more than one species)
+  mutate(   mivs = ifelse( taxonomic_level != 'binomial' & n_distinct(mivs) > 1, 'ambiguous', mivs),  # classify mivs at higher taxonomic levels
             inCSchallenge = ifelse ( any( inCSchallenge == 1), 1, 0)) %>% 
   distinct() 
 
@@ -263,34 +264,25 @@ user_info
 ### Include user ID, filename, datetime, response, photo_key
 ## "taxa_repeat" column gives the number of previous photos of the same taxa 
 ```{r}
-responses <- 
-  responses %>% 
-  mutate( datetime = paste0( created_at , ':00' )) %>% 
-  separate( datetime, c('date', 'time'), sep = ' ') %>%  
-  mutate( date = lubridate::mdy( date )) %>% 
-  mutate( datetime2 = paste0( date, time )) %>% 
-  mutate( datetime2 = strftime( datetime2, format = '%m/%d/%Y %H:%M:%S', tz = 'UTC' )) %>% 
-  select( -date, -time, -score, -created_at) %>% 
-  distinct()
 
 # Calculate taxa repeats per user 
 # order filenames per user based on the timestamp in datetime2
+
 responses <- 
   responses %>% 
+  mutate( created_at = as.POSIXct( strptime(created_at, format = '%m/%d/%Y %H:%M:%S', tz = 'UTC' ))) %>% 
   left_join(key_info, by = 'filename') %>% 
   group_by(id, photo_key)  %>% 
-  arrange( id, datetime2 ) %>% 
+  arrange(id, photo_key, created_at) %>%  
   mutate( taxa_repeat = row_number()) %>% 
   mutate( taxa_repeat = ifelse( is.na(photo_key), NA, taxa_repeat)) %>% 
   distinct()
 
-responses %>% group_by( id, filename, datetime2 ) %>% mutate( n = n() ) %>% arrange( desc(n)) %>% view
+responses %>% group_by( id, filename, created_at) %>% mutate( n = n() ) %>% arrange( desc(n)) %>% view
 
 responses %>% filter( id == "b9c4207d-ccf3-42b5-b6ef-203559869d05", filename == '1083.jpg') 
 responses_2 %>% filter( user_id == "b9c4207d-ccf3-42b5-b6ef-203559869d05", filename == '1083.jpg') 
 responses_3 %>% filter( id == "b9c4207d-ccf3-42b5-b6ef-203559869d05", filename == '1083.jpg') 
-
-responses_2$filename
 
 ```
 
