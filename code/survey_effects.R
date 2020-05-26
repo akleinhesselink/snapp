@@ -57,9 +57,26 @@ p4 <- predict( fit4, newdata = test_limited, allow_new_levels = T, summary= F)
 
 lppd1 <- lppd2 <- NA
 for( n in 1:nrow(test_limited) ) { 
-  lppd1[n] <- log( mean( p1[, n] == as.numeric( test_limited$score[n] )  ) )
-  lppd2[n] <- log( mean( p2[, n] == as.numeric( test_limited$score[n] )  ) )
+  lppd1[n] <- log( mean( p3[, n] == as.numeric( test_limited$score[n] )  ) )
+  lppd2[n] <- log( mean( p4[, n] == as.numeric( test_limited$score[n] )  ) )
 }
 
 sum(lppd1)
 sum(lppd2)
+
+neff_ratio(fit3)
+summary(fit3)
+summary(fit4)
+
+class( fit3$data$taxa_repeat )
+
+stancode(fit3)
+
+plot( fit3)
+
+library(emmeans)
+emmeans( fit3, score ~ photo_region + key_family ) 
+
+
+
+
