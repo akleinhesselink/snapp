@@ -1,8 +1,29 @@
 rm(list = ls() )
 library(tidyverse)
 library(brms)
-load( 'Data/snake_data.rda')
-load( 'Data/fit_2pl.null.rda')
+load( 'output/training_testing_data.rda')
+load( 'output/fit_2pl.null.rda')
+
+rm(fit_2pl.null)
+rm(test)
+
+# make covariate combos and fit all 
+
+my_covs <- expand.grid( key_family = c("key_family", ""), 
+                        photo_region = c("photo_region", ""), key_mivs = c("key_mivs", ""), taxa_repeat = c("taxa_repeat", ""), home_region = c('home_region', "")) %>%
+  data.frame() %>% 
+  filter( ! row_number() == 32 )
+
+models <- 
+  my_covs %>% 
+  arrange( key_family, photo_region, home_region, key_mivs, taxa_repeat) %>% 
+  filter( key_family == 'key_family', photo_region == 'photo_region') %>% 
+  mutate( form = paste( key_family, photo_region, key_mivs, taxa_repeat, home_region, sep = '+')) %>% 
+  mutate( form = str_replace_all(form, pattern = "[\\+]+", replacement = "+")) %>% 
+  mutate( form = str_replace_all(form, pattern = "[\\+]+$", replacement = "")) %>% 
+  mutate( form = paste0( "score ~ ", form ) ) %>% 
+  mutate( re_form = '(1 |i| item) + (taxa_repeat | id)' ) %>% 
+  mutate( re_form = ifelse( taxa_repeat == '', '(1 |i| item) + (1 | id)', re_form ))
 
 # User responses are graded as: 
 #   0: family incorrect or skipped
@@ -11,9 +32,9 @@ load( 'Data/fit_2pl.null.rda')
 #   3: binomial correct 
 
 # Sampling parms: 
-my_iter <- 1000 
+my_iter <- 4000 
 my_cores <- 4 
-my_thin <- 2 
+my_thin <- 5 
 
 # Ordered response model "2pl" 
 # With item discrimination parameter
@@ -24,25 +45,20 @@ prior_2pl.full <-
   prior("normal(0, 3)", class = "sd", group = "item") +
   prior("normal(0, 1)", class = "sd", group = "item", dpar = "disc") # item discrimination parameter with "disc" distribution 
 
-form_2pl.full <- bf( score ~ key_family + global_region + mivs + (1 |i| item) + (1 | id),
-                     disc ~ 1 + (1 |i| item) 
-)
-
-
-fit_2pl.full <- brm(
-  formula = form_2pl.full,
-  data = train_sample,
-  family = brmsfamily("cumulative", "logit"),
-  prior = prior_2pl.full, cores = my_cores, iter = my_iter) # limit iterations for testing 
-
-
-library(lme4)
-
-train_sample$score2 <-  as.numeric( train_sample$score ) - 1
-mer_full <- lmer( score2 ~ key_family + global_region + mivs + (1|item) + (1|id), data = train_sample)
-
-emmeans::emmeans(mer_full, ~ key_family )  %>% plot 
-emmeans::emmeans(mer_full, ~ global_region) %>% plot 
-
-save( fit_2pl.full, train_sample, test_sample, file = 'data/fit_2pl.full.rda')
-
+for( i in 1:nrow( models )) { 
+  temp_form <- as.formula( paste0( models$form[i], ' + ', models$re_form[i] ))
+  
+  temp_bf <- bf( temp_form, disc ~ 1 + (1 |i| item) )
+  print( paste0( "working on model # ", i))
+  print( temp_bf)
+  temp_fit <- brm(
+    formula = temp_bf,
+    data = train,
+    family = brmsfamily("cumulative", "logit"),
+    prior = prior_2pl.full, cores = my_cores, iter = my_iter, thin = my_thin) # limit iterations for testing 
+  
+  outfile <- paste0( 'output/fit_2pl_model_', i, '.rda')
+  
+  save( temp_fit, file = outfile)
+  rm( temp_fit )
+}

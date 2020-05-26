@@ -10,8 +10,6 @@ responses <- read_csv( 'output/cleaned_response_data.csv')
 #   2: genus correct 
 #   3: binomial correct 
 
-responses %>% View
-
 # Show number "inCSchallenge"
 responses %>% 
   group_by( inCSchallenge) %>% 
@@ -50,56 +48,51 @@ responses$score <- factor(responses$score, levels = c(0, 1, 2, 3), ordered = T)
 # model development.  (reduce wait time for sampling). 
 set.seed(1)
 
-responses$fold <- loo::kfold_split_grouped(4, x = responses$id )
+responses$fold <- loo::kfold_split_grouped(3, x = responses$id )
 
-train_sample <- 
+train <- 
   responses %>% 
-  filter(fold == 1)
+  filter(fold %in% c(1,2))
 
-test_sample <-
+test <-
   responses %>% 
-  filter(fold %in% c(2:3))
+  filter(fold == 3)
+
 
 # Filter to users with at least "min_q" questions answered 
 # For model development only, 
 # Done to speed model fitting 
 
-flag_skipped <- 1
-min_q <- 30 # n question limit 
-min_u <- 20 # max n questions 
+min_q <- 100 # n question limit 
 
-train_sample <- 
-  train_sample %>% 
-  filter( not_skipped %in% flag_skipped ) %>% 
+train <- 
+  train %>% 
   group_by( id ) %>%
   mutate( items_per_user = n()) %>% 
   group_by( item) %>% 
   mutate( users_per_item = n() ) %>% 
-  filter( items_per_user > min_q  ) %>% # include users that answered more than 20 questions
-  filter( users_per_item > min_u ) # include questions that at least 30 users answered 
+  filter( items_per_user > min_q  ) # user answered question limit 
 
-test_sample <- 
-  test_sample %>% 
-  filter( not_skipped %in% flag_skipped ) %>% 
+test <- 
+  test %>% 
   group_by( id ) %>%
   mutate( items_per_user = n()) %>% 
   group_by( item) %>% 
   mutate( users_per_item = n() ) %>% 
-  filter( items_per_user > min_q  ) %>% # include users that answered more than 20 questions
-  filter( users_per_item > min_u ) # include questions that at least 30 users answered 
+  filter( items_per_user > min_q  ) # include users that answered more than 20 questions
 
-nrow( train_sample )
-n_distinct(train_sample$id)
-n_distinct(train_sample$item)
+nrow( train )
+n_distinct(train$id)
+n_distinct(train$item)
 
-nrow( test_sample )
-n_distinct(test_sample$id)
-n_distinct(test_sample$item)
+nrow( test )
+n_distinct(test$id)
+n_distinct(test$item)
 
 # Sampling parms: 
-my_iter <- 1000 
+my_iter <- 3000 
 my_cores <- 4 
-my_thin <- 2 
+my_thin <- 5 
 
 # Ordered response model "1pl" 
 # No item discrimination parameter
@@ -113,11 +106,13 @@ form_1pl.null <- bf(score ~ 1 + (1 | item) + (1 | id ))
 
 fit_1pl.null <- brm(
   formula = form_1pl.null,
-  data = train_sample,
+  data = train,
   family = brmsfamily("cumulative", "logit"),
-  prior = prior_1pl.null, cores = my_cores, iter = my_iter) # limit iterations for testing 
+  prior = prior_1pl.null, cores = my_cores, iter = my_iter, thin = my_thin) # limit iterations for testing 
 
-save( fit_1pl.null, train_sample, test_sample,  file = 'data/fit_1pl.null.rda')
+save( train, test, file = 'output/training_testing_data.rda')
+
+save( fit_1pl.null, file = 'output/fit_1pl.null.rda')
 
 # Ordered response model "2pl" 
 # With item discrimination parameter
@@ -134,9 +129,10 @@ form_2pl.null <- bf( score ~ 1 + (1 |i| item) + (1 | id),
 
 fit_2pl.null <- brm(
   formula = form_2pl.null,
-  data = train_sample,
+  data = train,
   family = brmsfamily("cumulative", "logit"),
-  prior = prior_2pl.null, cores = my_cores, iter = my_iter) # limit iterations for testing 
+  prior = prior_2pl.null, cores = my_cores, iter = my_iter, thin = my_thin) # limit iterations for testing 
 
-save( fit_2pl.null, train_sample, test_sample, file = 'data/fit_2pl.null.rda')
+save( fit_2pl.null,  file = 'output/fit_2pl.null.rda')
 
+plot(fit_2pl.null)

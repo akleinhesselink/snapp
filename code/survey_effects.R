@@ -2,56 +2,64 @@ rm(list = ls())
 library(brms)
 library(tidyverse)
 
-load('data/snake_data.rda')
-load('data/fit_1pl.null.rda')
-load('data/fit_2pl.null.rda')
-load('data/fit_2pl.full.rda')
+load('output/training_testing_data.rda')
+load('output/fit_2pl.null.rda')
+load('output/fit_2pl_model_1.rda')
 
-summary( fit_1pl.null )
-summary( fit_2pl.null)
+fit1 <- temp_fit
+load('output/fit_2pl_model_2.rda')
+fit2 <- temp_fit
+load('output/fit_2pl_model_3.rda')
+fit3 <- temp_fit
+load('output/fit_2pl_model_4.rda')
+fit4 <- temp_fit 
+load('output/fit_2pl_model_5.rda')
+fit5 <- temp_fit 
+load('output/fit_2pl_model_6.rda')
+fit6 <- temp_fit 
+load('output/fit_2pl_model_7.rda')
+fit7 <- temp_fit
+load('output/fit_2pl_model_8.rda')
+fit8 <- temp_fit 
 
-plot(fit_1pl.null)
-plot(fit_2pl.null)
+summary( fit1 )
+summary( fit2 )
 
-fit1 <- add_criterion(fit_1pl.null, 'waic')
-fit2 <- add_criterion(fit_2pl.null, 'waic')
+fit1 <- add_criterion(fit1, 'loo')
+fit2 <- add_criterion(fit2, 'loo')
+fit3 <- add_criterion(fit3, 'loo')
+fit4 <- add_criterion(fit4, 'loo')
+fit5 <- add_criterion(fit5, 'loo')
+fit6 <- add_criterion(fit6, 'loo')
+fit7 <- add_criterion(fit7, 'loo')
+fit8 <- add_criterion(fit8, 'loo')
 
-loo_compare(fit1, fit2, criterion = 'waic')
+loo_compare(fit1, fit2, fit3, fit4, fit5, fit6, fit7, fit8)
 
-# Model 2pl is preferred but there are some sampling issues. 
+fit3$model
 
-# Model with covariates 
+fit3$formula
+fit4$formula
 
-fit_full <- add_criterion(fit_2pl.full, 'waic')
+# model 3 and model 1 are the  best fitting models 
+# they both include the taxa repeat main effect and hierarchical effect within user 
 
-loo_compare(fit2, fit_full, criterion = 'waic')
-loo(fit2)
-loo(fit_full)
+# model 4 is next in fit, it includes key_family, photo_region and home_region 
 
-snake %>% 
-  left_join(user_info, by = 'user_id') %>% 
-  group_by( user_region ) %>% 
-  summarise( n() , n_distinct(user_id))
+# compare prediction on oos testing data 
 
-df <- make_conditions(train_sample, vars = c('global_region'))
+all(  (test$key_family %in% fit3$data$key_family ))
 
-predict( fit_full, data.frame( global_region ='Africa', key_family = "Boidae", mivs = "n"), re_formula = NA)
+test_limited <- test[ test$key_family %in% unique( fit3$data$key_family ) , ] 
 
-out <- conditional_effects(fit_full, 'global_region', categorical = T, )
+p3 <- predict( fit3, newdata = test_limited, allow_new_levels = T, summary = F)
+p4 <- predict( fit4, newdata = test_limited, allow_new_levels = T, summary= F)
 
-out$`global_region:cats__`$Accuracy_Level <- factor( out$`global_region:cats__`$effect2__, labels = c('incorrect', 'family', 'genus', 'binomial'))
+lppd1 <- lppd2 <- NA
+for( n in 1:nrow(test_limited) ) { 
+  lppd1[n] <- log( mean( p1[, n] == as.numeric( test_limited$score[n] )  ) )
+  lppd2[n] <- log( mean( p2[, n] == as.numeric( test_limited$score[n] )  ) )
+}
 
-out$`global_region:cats__` %>% 
-  ggplot( aes( x = global_region, y = estimate__, ymin = lower__, ymax = upper__ , color = Accuracy_Level)) + 
-  geom_point(position = position_dodge(width = 0.9)) + 
-  geom_errorbar(position = 'dodge')
-        
-
-out <- conditional_effects(fit_full, 'key_family', categorical = T)
-
-out$`key_family:cats__`$Accuracy_Level <- factor( out$`key_family:cats__`$effect2__, labels = c('incorrect', 'family', 'genus', 'binomial'))
-
-out$`key_family:cats__` %>% 
-  ggplot( aes( x = key_family, y = estimate__, ymin = lower__, ymax = upper__ , color = Accuracy_Level)) + 
-  geom_point(position = position_dodge(width = 0.9)) + 
-  geom_errorbar(position = 'dodge')
+sum(lppd1)
+sum(lppd2)
