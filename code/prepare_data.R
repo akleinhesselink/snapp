@@ -16,11 +16,11 @@ photo_key <-
     rename( 'key' = binomial ) %>% 
     mutate( dataset = 1, photo_region = NA), 
   responses_2 %>% 
-    select(filename, species, global_region) %>% 
+    select(filename, species, global_region, difficulty) %>% 
     rename( 'key' = species, 'photo_region' = global_region) %>% 
     mutate( dataset = 2), 
   responses_3 %>% 
-    select(filename, species, global_region ) %>% 
+    select(filename, species, global_region, difficulty ) %>% 
     rename( 'key' = species, 'photo_region'  = global_region ) %>% 
     mutate( dataset = 3)
   ) %>%  
@@ -28,7 +28,7 @@ photo_key <-
   group_by( filename ) %>%
   arrange( desc(dataset)) %>% 
   filter( row_number() == 1 )  %>% # keep corrected photo_key's from dataset 2 and 3. 
-  distinct(filename, key, photo_region ) %>% 
+  distinct(filename, key, photo_region, difficulty ) %>% 
   arrange( filename )
 
 # photo_key %>% View # show photo_key 
