@@ -33,10 +33,6 @@ responses <-
   responses %>%
   filter( !is.na(photo_region )) 
 
-responses <- 
-  responses %>%
-  filter( !is.na(difficulty))
-
 # Setting up model: 
 #   Based on Burkner (2020), I believe the best way to analyze the tests
 #   is with a graded response ordinal model.  We can try to fit a model 
@@ -52,16 +48,9 @@ responses$id <- responses$id
 responses$item <- responses$filename
 responses$score <- factor(responses$score, levels = c(0, 1, 2, 3), ordered = T)
 
-# exclude repeat images for same user (happens if user goes to end of survey)
-
-responses <- 
-  responses %>% 
-  group_by(id, filename)  %>% 
-  arrange(id, filename, created_at) %>%  
-  mutate( photo_repeat = row_number()) %>% 
-  mutate( photo_repeat = ifelse( is.na(filename), NA, photo_repeat)) %>%  # remove photo repeats  
-  filter( photo_repeat < 2 ) %>%
-  arrange( id, created_at ) 
+# Check for duplicate images shown to same user 
+responses %>%
+  group_by( id, filename) %>% summarise( n = n()) %>% filter( n > 1  )
 
 responses <-  
   responses %>%
@@ -79,15 +68,15 @@ responses <-
 # model development.  (reduce wait time for sampling). 
 set.seed(1)
 
-responses$fold <- loo::kfold_split_grouped(3, x = responses$id )
+responses$fold <- loo::kfold_split_grouped(2, x = responses$id )
 
 train <- 
   responses %>% 
-  filter(fold %in% c(1,2))
+  filter(fold %in% c(1))
 
 test <-
   responses %>% 
-  filter(fold == 3)
+  filter(fold == 2)
 
 
 nrow( train )

@@ -1,37 +1,93 @@
 rm(list = ls())
 require( tidyverse)
 
-responses_1 <- read_tsv('raw_data/snapp_responses.txt')  # list of responses 
-responses_2  <- read_csv('raw_data/snapp_responses_out-corr-only100spp-toErol.csv') # list of responses with photo taxa corrected
-responses_3  <- read_csv('raw_data/DT.sm100.csv')   # includes user region information 
+raw_responses <- read_tsv('raw_data/snapp_responses.txt')  # list of responses 
+
+## clean up and rename columns 
+responses <- 
+  raw_responses %>% 
+  select( user_id, created_at, filename, `user_time(ms)`, answer) %>% 
+  rename( 'response' = answer , 
+          'id' = user_id, 
+          'response_time' = `user_time(ms)`) %>% 
+  mutate( created_at = as.POSIXct( strptime(created_at, format = '%m/%d/%Y %H:%M:%S', tz = 'UTC' ))) %>% 
+  arrange( id, created_at )  %>% 
+  distinct() 
+
+## Check for duplicate records 
+# Different response times for same exact filename user id, response and datestamp!! ?  
+duplicate_rt <- 
+  responses %>% 
+  group_by( id, created_at, filename, response) %>%
+  mutate( n= n_distinct(response_time)) %>% 
+  arrange( desc( n)) %>% 
+  filter( n > 1 )
+
+# system appears to be logging multiple response times for the same question and user 
+# these are only a few milliseconds off 
+duplicate_rt %>%
+  summarise( max( response_time) - min(response_time)) 
+
+# We are not using response time so we will drop this and recalculate the distinct records 
+responses <- 
+  responses %>% 
+  ungroup() %>% 
+  select( id, created_at, filename, response) %>% 
+  distinct() 
+
+# there is one case where the same question at the same time got two different answers !!!? 
+responses %>% group_by( id, created_at ) %>% mutate( n = n() ) %>% filter( n > 1 )
+
+# We will take the one that is not NA 
+responses <- 
+  responses %>% 
+  group_by( id, created_at ) %>% 
+  mutate( repeated = row_number() ) %>% 
+  filter( repeated == 1 ) %>% 
+  select( - repeated )
+
+# Many cases where the same exact file is shown to the same exact user within a short period of time!!!? 
+responses %>%
+ arrange( id, filename, created_at )  %>% 
+ group_by( id, filename ) %>% 
+ mutate( n_file_repeats = row_number()  )  %>%
+ filter( n_distinct(n_file_repeats) > 1 ) 
+
+# We will take the first instance that a file is shown to a user 
+responses <- 
+  responses %>%
+  arrange( id, filename, created_at )  %>% 
+  group_by( id, filename ) %>% 
+  mutate( n_file_repeats = row_number()  )  %>%
+  filter( n_file_repeats == 1 ) %>% 
+  select( id, filename, created_at, response) 
+
+# dropped 393 duplicated records of one kind or another 
+( raw_responses %>% nrow() )  - (responses %>% nrow() ) 
+
+# drop file numbers above "1000";  These are not scored
+responses <- 
+  responses %>%
+  filter( str_extract(filename, '\\d+') < 1001 ) %>% 
+  arrange( id, created_at, filename, response ) 
+
+# Calculate total number of records dropped  
+( raw_responses %>% nrow() )  - (responses %>% nrow() ) 
+
+rm(raw_responses)
+
+photo_key <- read_csv('raw_data/filename key.csv') %>% select( - X1 )
+
+# ODD photos are easy, even photos are hard
+photo_key <- 
+  photo_key %>% 
+  arrange( filename) %>% 
+  mutate( difficulty = row_number() %% 2 == 0 ) %>% 
+  mutate( difficulty = factor( difficulty, labels = c('easy', "hard")))
+  
 
 user_info <- read_csv('raw_data/snapp_users_noemail.csv')     # list of user information 
-taxa_info <- read_csv('raw_data/species incl mivs for Andy out.csv')  # list of taxonomic information for taxa in photos and taxa not in photos 
-
-# Make key with correct ID for each unique photo 
-photo_key <- 
-  bind_rows( 
-  responses_1 %>% 
-    select( filename, binomial ) %>% 
-    rename( 'key' = binomial ) %>% 
-    mutate( dataset = 1, photo_region = NA), 
-  responses_2 %>% 
-    select(filename, species, global_region, difficulty) %>% 
-    rename( 'key' = species, 'photo_region' = global_region) %>% 
-    mutate( dataset = 2), 
-  responses_3 %>% 
-    select(filename, species, global_region, difficulty ) %>% 
-    rename( 'key' = species, 'photo_region'  = global_region ) %>% 
-    mutate( dataset = 3)
-  ) %>%  
-  distinct() %>% 
-  group_by( filename ) %>%
-  arrange( desc(dataset)) %>% 
-  filter( row_number() == 1 )  %>% # keep corrected photo_key's from dataset 2 and 3. 
-  distinct(filename, key, photo_region, difficulty ) %>% 
-  arrange( filename )
-
-# photo_key %>% View # show photo_key 
+taxa_info <- read_csv('raw_data/species incl mivs for Andy out.csv') %>% select( - X1 )  # list of taxonomic information for taxa in photos and taxa not in photos 
 
 # Make table of taxonomic information for all species, genera and family 
 # Fill in information for photo keys and user responses 
@@ -73,9 +129,12 @@ family_info <-
 all_taxa_info <- 
   bind_rows( binomial_info, genus_info, family_info)
 
-# Join photo key with taxa information 
+# Make photo key with taxa information 
+
 photo_key <- 
   photo_key %>% 
+  rename( 'key' = correct.binomial) %>% 
+  rename( 'photo_region' = global_region) %>%
   left_join(all_taxa_info, by = c('key' = 'taxa')) %>% 
   rename( 'key_genus' = genus, 
           'key_family' = family, 
@@ -83,7 +142,7 @@ photo_key <-
           'key_taxonomic_level' = taxonomic_level )  %>% 
   distinct()
 
-# Make table to join to user responses 
+# Make response table with taxa info
 response_taxa <- 
   all_taxa_info %>% 
   select( - inCSchallenge ) %>% 
@@ -102,7 +161,10 @@ user_info <-
   mutate( user_region = ifelse( user_region == 'Australasia Oceania' , 'Australasia/Oceania', user_region)) %>% # format to match taxa region
   distinct() 
 
-all_ids <- unique( c(user_info$id, responses_1$user_id, responses_2$user_id, responses_3$user_id )) # get all unique user IDs
+all_ids <- unique(responses$id)
+
+# Total number of distinct users 
+length(all_ids) 
 
 user_info <- 
   tibble( id = all_ids )  %>% 
@@ -112,83 +174,58 @@ user_info <-
 
 user_info %>%
   group_by( user_region ) %>% 
-  summarise( n() )
+  summarise( n_users =  n() )
 
 # check for duplicates: 
 user_info %>% 
   group_by( id ) %>% 
   filter( n() > 1)
 
-
-### Format all response information ---------------------- # 
-
-# remove duplicates 
-responses <- 
-  responses_1 %>% 
-  group_by( user_id, filename, created_at) %>% 
-  mutate( n = n()) %>%
-  arrange(desc(n), is.na(answer)) %>% 
-  filter( row_number() == 1 ) %>% # take only the first record of each group
-  select( -n ) %>% 
-  ungroup() %>% 
-  distinct() 
-
+### Join filename and response information on taxa ---------------------- # 
 responses <- 
   responses %>% 
-  rename( 'response' = answer , 
-          'id' = user_id, 
-          'response_time' = `user_time(ms)`) %>% 
-  mutate( created_at = as.POSIXct( strptime(created_at, format = '%m/%d/%Y %H:%M:%S', tz = 'UTC' ))) %>% 
-  select( id, filename, created_at, response_time, response) %>% 
-  distinct() %>% 
-  left_join(photo_key, by = 'filename') %>% 
-  group_by(id, key)  %>% 
-  arrange(id, key, created_at) %>%  
-  mutate( taxa_repeat = row_number()) %>% 
-  mutate( taxa_repeat = ifelse( is.na(key), NA, taxa_repeat)) %>%  # calculate taxa repeats 
-  distinct() 
+  left_join(photo_key, by = 'filename') %>%
+  left_join(response_taxa, by = 'response')
 
-responses %>% filter( id == "b9c4207d-ccf3-42b5-b6ef-203559869d05") %>% View
+# calculate taxa repeats 
+responses <- 
+  responses %>% 
+  group_by(id, key ) %>% 
+  arrange( id, key, created_at ) %>%
+  mutate( taxa_repeat = row_number() )
+
+# Show taxa that show up more than 10 times 
+responses %>% 
+  group_by( key ) %>% 
+  summarise( rep =  max( taxa_repeat)) %>% 
+  filter( rep > 10 )
 
 ## Join user info for user region  
 ## Calculate "home_region" field when user region is provided 
+responses %>%nrow()
 
 responses <- 
   responses %>% 
   ungroup() %>% 
-  group_by( id ) %>% 
-  mutate( user_start = min(created_at)) %>% 
-  arrange( user_start, created_at) %>% 
-  mutate( unique_question = row_number() ) %>% 
   left_join( user_info, by = 'id') %>%
-  mutate( inCSchallenge = ifelse( is.na(inCSchallenge), 0, inCSchallenge)) %>% 
   mutate( skip = is.na(response)) %>% 
   mutate( home_region = user_region == photo_region ) %>%             
   mutate( home_region = ifelse( is.na(photo_region) | is.na(user_region), NA, home_region)) 
 
-
 ## Calculate user scores: 
 ## Match user responses to taxa information  
 ## Score user response:  Correct species == 3, correct genus = 2, correct family = 1, incorrect or skip = 0 
-
 responses <- 
-  responses %>%
-  left_join(response_taxa, by = 'response') %>% 
-  mutate( correct_binomial = (response == key), 
-          correct_genus = (response_genus == key_genus), 
-          correct_family = (response_family == key_family) ) %>%
-  mutate( correct_binomial = ifelse( is.na(correct_binomial), F, correct_binomial),  
-          correct_genus = ifelse( is.na(correct_genus), F, correct_genus), 
-          correct_family = ifelse( is.na(correct_family), F, correct_family)) %>% 
-  rowwise() %>% 
-  mutate( score = (correct_binomial + correct_genus + correct_family) ) %>%  # CALCULATE SCORE 
-  mutate( score = ifelse( is.na(key), NA, score ))  %>%                # Score is NA where no key_taxa are provided
-  ungroup() %>% 
-  distinct()
+  responses %>% 
+  rowwise() %>%
+  mutate( score = replace_na(key == response, 0 ) + 
+            replace_na( key_genus == response_genus, 0) + 
+            replace_na( key_family == response_family, 0))  
 
 # Show any repeats that exist 
 responses %>% 
-  group_by( id, filename,  created_at, filename, response, score ) %>% 
+  ungroup() %>%
+  group_by( id, filename) %>% 
   filter( n() > 1 ) 
 
 responses %>% 
