@@ -7,8 +7,8 @@ library(tidyverse)
 load( 'output/training_testing_data.rda')
 
 my_cores <- 4
-my_iter <- 6000
-my_thin <- 10
+my_iter <- 2000
+my_thin <- 1
 
 # Ordered response model "2pl" 
 # With item discrimination parameter

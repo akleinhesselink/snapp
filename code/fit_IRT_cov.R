@@ -10,10 +10,10 @@ rm(test)
 # make combinations of covariates to fit 
 my_covs <- expand.grid( key_family = c("key_family", ""), 
                         photo_region = c("photo_region", ""), 
-                        key_mivs = c("key_mivs", ""), 
                         taxa_repeat = c("taxa_repeat", ""), 
                         home_region = c('home_region', ""), 
-                        difficulty = c('difficulty', "")) %>%
+                        difficulty = c('difficulty', ""), 
+                        region_by_home = c("photo_region:home_region", "")) %>%
   data.frame() 
 
 
@@ -43,9 +43,9 @@ models$re_form <- "(1 |i| item) + (1 | id) + (1 |k | key)"
 #   3: binomial correct 
 
 # Sampling parms: 
-my_iter <- 6000
+my_iter <- 2000
 my_cores <- 4 
-my_thin <- 10 
+my_thin <- 1 
 
 # Ordered response model "2pl" 
 # With item discrimination parameter

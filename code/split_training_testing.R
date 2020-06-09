@@ -68,15 +68,15 @@ responses <-
 # model development.  (reduce wait time for sampling). 
 set.seed(1)
 
-responses$fold <- loo::kfold_split_grouped(2, x = responses$id )
+responses$fold <- loo::kfold_split_grouped(3, x = responses$id )
 
 train <- 
   responses %>% 
-  filter(fold %in% c(1))
+  filter(fold %in% c(1,2))
 
 test <-
   responses %>% 
-  filter(fold == 2)
+  filter(fold == 3)
 
 
 nrow( train )
