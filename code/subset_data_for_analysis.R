@@ -64,27 +64,30 @@ responses <-
   responses %>% 
   filter( items_per_user > min_q)
 
-# Split to testing and training 
-# model development.  (reduce wait time for sampling). 
-set.seed(1)
+save( responses, file = 'output/data_for_analysis.rda')
 
-responses$fold <- loo::kfold_split_stratified(4, x = responses$id )
-
-train <- 
-  responses %>% 
-  filter(fold %in% c(1, 2, 3))
-
-test <-
-  responses %>% 
-  filter(fold == 4)
-
-
-nrow( train )
-n_distinct(train$id)
-n_distinct(train$item)
-
-nrow( test )
-n_distinct(test$id)
-n_distinct(test$item)
-
-save( train, test, file = 'output/training_testing_data.rda')
+# 
+# # Split to testing and training 
+# # model development.  (reduce wait time for sampling). 
+# set.seed(1)
+# 
+# responses$fold <- loo::kfold_split_grouped(3, x = responses$id )
+# 
+# train <- 
+#   responses %>% 
+#   filter(fold %in% c(1,2))
+# 
+# test <-
+#   responses %>% 
+#   filter(fold == 3)
+# 
+# 
+# nrow( train )
+# n_distinct(train$id)
+# n_distinct(train$item)
+# 
+# nrow( test )
+# n_distinct(test$id)
+# n_distinct(test$item)
+# 
+# save( train, test, file = 'output/training_testing_data.rda')

@@ -7,8 +7,8 @@ library(tidyverse)
 load( 'output/training_testing_data.rda')
 
 my_chains <- my_cores <- 4
-my_iter <- 200
-my_thin <- 1
+my_iter <- 4000
+my_thin <- 2
 
 # Ordered response model "2pl" 
 # With item discrimination parameter
@@ -16,29 +16,11 @@ my_thin <- 1
 
 my_prior <- 
   prior("constant(1)", class = "sd", group = "id" ) +
-  prior("normal(0, 1)", class = "sd", group = "item") +
-  prior("normal(0, 1)", class = "sd", group = "key") + 
-  prior("normal(0, 1)", class = "sd", group = "item", dpar = "disc")  + 
-  prior("normal(0, 1)", class = "sd", group = "key", dpar = "disc") # item discrimination parameter with "disc" distribution 
+  prior("normal(0, 2)", class = "sd", group = "item") +
+  prior("normal(0, 2)", class = "sd", group = "key") + 
+  prior("normal(0, 2)", class = "sd", group = "item", dpar = "disc")  + 
+  prior("normal(0, 2)", class = "sd", group = "key", dpar = "disc") # item discrimination parameter with "disc" distribution 
 
-
-form_null <- bf( score ~ 1 + key_family + taxa_repeat + (1 |i| item) + (1 | id) + (1 |k | key),
-                          disc ~ 1 + (1 | i | item) + (1 | k | key ) )
-
-
-fit_null <- brm(
-  formula = form_null,
-  data = train,
-  family = brmsfamily("cumulative", "logit"),
-  prior = my_prior, 
-  cores = my_cores,
-  chains = my_chains,
-  iter = my_iter, 
-  thin = my_thin) # limit iterations for testing 
-
-save( fit_null,  file = 'output/fit_null.rda')
-
-rm(fit_null)
 
 # Fit models with covariates 
 my_covs <- expand.grid( key_family = c("key_family", ""), 
@@ -52,26 +34,19 @@ my_covs <- expand.grid( key_family = c("key_family", ""),
 
 models <- 
   my_covs %>% 
-  arrange( key_family, photo_region, home_region, key_mivs, taxa_repeat) %>% 
+  arrange( key_family, photo_region, home_region, difficulty, region_by_home) %>% 
   filter( key_family == 'key_family', photo_region == 'photo_region', taxa_repeat == 'taxa_repeat') %>% 
-  mutate( form = paste( key_family, photo_region, key_mivs, taxa_repeat, home_region, difficulty, sep = '+')) %>% 
+  mutate( form = paste( key_family, photo_region, home_region, taxa_repeat, difficulty, region_by_home, sep = '+')) %>%
   mutate( form = str_replace_all(form, pattern = "[\\+]+", replacement = "+")) %>% 
   mutate( form = str_replace_all(form, pattern = "[\\+]+$", replacement = "")) %>% 
-  mutate( form = paste0( "score ~ ", form ) ) 
+  mutate( form = paste0( "score ~ ", form ) ) %>% 
+  filter( !(region_by_home == 'photo_region:home_region' & home_region == '')  )
 
-
-models$re_form <- "(1 |i| item) + (1 | id) + (1 |k | key)"
+models$re_form <- "(1 |i| item) + (1 | id) + (1 |k| key)"
 
 # Ordered response model "2pl" 
 # With item discrimination parameter
 # No guessing parameter 
-
-my_prior <- 
-  prior("constant(1)", class = "sd", group = "id") +
-  prior("normal(0, 1)", class = "sd", group = "item") +
-  prior("normal(0, 1)", class = "sd", group = "key") + 
-  prior("normal(0, 1)", class = "sd", group = "item", dpar = "disc")  + 
-  prior("normal(0, 1)", class = "sd", group = "key", dpar = "disc") # item discrimination parameter with "disc" distribution 
 
 for( i in 1:nrow( models )) { 
   temp_form <- as.formula( paste0( models$form[i], ' + ', models$re_form[i] ))

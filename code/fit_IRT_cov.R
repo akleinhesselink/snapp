@@ -1,10 +1,9 @@
-rm(list = ls() )
+rm(list = ls())
 library(tidyverse)
 library(brms)
 options(buildtools.check = function(action) TRUE )
 
 load( 'output/training_testing_data.rda')
-rm(test)
 
 # make covariate combos and fit all 
 # make combinations of covariates to fit 
@@ -26,6 +25,8 @@ models <-
   mutate( form = str_replace_all(form, pattern = "[\\+]+$", replacement = "")) %>% 
   mutate( form = paste0( "score ~ ", form ) ) 
 
+
+
 prior_2pl.null_key_item <- 
   prior("constant(1)", class = "sd", group = "id", coef = "Intercept" ) +
   prior("normal(0, 1)", class = "sd", group = "item") +
@@ -33,8 +34,7 @@ prior_2pl.null_key_item <-
   prior("normal(0, 1)", class = "sd", group = "item", dpar = "disc")  + 
   prior("normal(0, 1)", class = "sd", group = "key", dpar = "disc") # item discrimination parameter with "disc" distribution 
 
-
-models$re_form <- "(1 |i| item) + (1 | id) + (1 |k | key)"
+models$re_form <- "(1 |i| item) + (1 | id) + (1 |k| key)"
 
 # User responses are graded as: 
 #   0: family incorrect or skipped
@@ -67,7 +67,7 @@ for( i in 1:nrow( models )) {
   
   temp_fit <- brm(
     formula = temp_bf,
-    data = train,
+    data = responses,
     family = brmsfamily("cumulative", "logit"),
     prior = my_prior, 
     cores = my_cores, 
