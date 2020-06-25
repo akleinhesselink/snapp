@@ -6,6 +6,11 @@ load('output/full_model_fit_3.rda')
 m3 <- temp_fit
 rm(temp_fit)
 
+ns <- 200  # number of posterior samples
+pw <- 8 # image width 
+ph <- 8 # image height 
+
+
 # Get posterior samples from random effects: 
 
 random_fx <- ranef( m3)
@@ -32,23 +37,18 @@ id_int <-
   arrange(Estimate) %>%
   mutate( id_q = factor( cut(Estimate, breaks = quantile(Estimate, c(0, 0.10, 0.90, 1)), include.lowest = T), labels = c('Low', 'Medium', 'High')) )
 
-#mu_hat <- posterior_linpred(m3, nsamples = 30) %>% t() %>% rowMeans()
-
-#train$mu_hat <- mu_hat
-
 my_fit <- m3$fit
 
 disc_info <- 
   m3$data %>% 
   select( key, item )  %>% 
-  bind_cols( as.data.frame(apply( brms::posterior_linpred(m3, dpar = 'disc', nsamples = 200) , 2, quantile ) %>% t()  )) %>% 
+  bind_cols( as.data.frame(apply( brms::posterior_linpred(m3, dpar = 'disc', nsamples = ns) , 2, quantile , probs = c(0.025, 0.5, 0.975)) %>% t()  )) %>% 
   distinct() %>% 
   arrange( key, item ) %>% 
   group_by( key )  %>%
   mutate( avg_disc = mean(`50%`))
 
 disc_info$key_f <- factor( disc_info$key , levels = unique( disc_info$key[ order( disc_info$avg_disc)]), ordered = T)
-
 
 disc_info %>%
   ungroup() %>% 
@@ -62,7 +62,6 @@ disc_ranks <-
   mutate( disc_rank = cut( `50%`, breaks = quantile( `50%`, c(0, 0.05, 0.95, 1)), include.lowest = T, labels = c('Low discrimination taxa','Med. disc.', 'High discrimination taxa') ) ) %>%
   filter( disc_rank != 'Med. disc.') 
 
-
 train %>% 
   left_join(disc_ranks, by = c('key', 'item')) %>%
   left_join(id_int, by = 'id') %>%
@@ -74,22 +73,16 @@ train %>%
   facet_wrap( ~ disc_rank)  
   
 
-id_int %>%
-  mutate( id_ordered = factor( id, levels = id[order(Estimate)], ordered = T)) %>% 
-  ggplot(aes( x = id_ordered,  y = Estimate, ymin = Q2.5, ymax = Q97.5)) +
-  geom_point() + 
-  geom_errorbar() + 
-  coord_flip() 
-
 disc_I <- fixef(m3)['disc_Intercept', 1]
 
 disc_info %>%
-  ggplot( aes( x = disc_info$key_f, y = `50%`)) + 
+  ggplot( aes( x = key_f, y = `50%`)) + 
   geom_point() + 
   xlab( 'Species' ) + 
-  ylab( 'Discrimination Parameter') + 
-  coord_flip()
-
+  ylab( 'Discrimination parameter') + 
+  coord_flip() + 
+  theme(axis.text.y = element_text(face = 'italic', size = 6)) + 
+  ggsave(filename = 'figures/discrimination_by_taxa_points.png', height = ph, width = pw )
 
 key_disc %>% 
   mutate(key_order = factor(key, levels = key[order(Estimate)], ordered = T)) %>%
@@ -97,7 +90,59 @@ key_disc %>%
   ggplot( aes( x = key_order, y = Estimate)) + 
   geom_point( aes( y = Estimate ), color = 'blue') + 
   geom_errorbar( aes( ymin = `Q2.5` , ymax = `Q97.5`), alpha = 0.5, color = 'blue') + 
-  coord_flip()
+  coord_flip() + 
+  xlab( 'Species' ) + 
+  ylab( 'Discrimination parameter') + 
+  theme(axis.text.y = element_text(face = 'italic', size = 6))  + 
+  ggsave(filename = 'figures/discrimination_by_taxa.png', height = ph, width = pw )
+
+
+ref_taxa <- "Opheodrys aestivus"
+disc_info %>% 
+  left_join( train %>% ungroup() %>% distinct(item, difficulty, key, key_family) , by = c('key','item')) %>% 
+  filter( key == ref_taxa)  %>% 
+  mutate( item_f = factor( item, levels = unique(item[order(`50%`)]),ordered = T) ) %>% 
+  ggplot( aes( x = item_f, y = `50%`, ymin = `2.5%`, ymax = `97.5%`, color = difficulty) ) + 
+  geom_point() + 
+  geom_errorbar()+ 
+  coord_flip() + 
+  ggtitle( paste0( ref_taxa ) ) + 
+  xlab( 'filename') + 
+  ylab( 'Discrimination parameter')
+
+
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73",  "#0072B2", "#F0E442", "#D55E00", "#CC79A7")
+
+id_int %>%
+  mutate( id_short = substr( id, 1 , 8)) %>% 
+  mutate( id_ordered = factor( id_short, levels = unique(id_short[order(Estimate)]), ordered = T)) %>% 
+  left_join( train %>% distinct(id, user_region ), by = 'id') %>% 
+  ggplot(aes( x = id_ordered,  y = Estimate, ymin = Q2.5, ymax = Q97.5, color = user_region)) +
+  geom_point( size = 3, alpha = 0.7) + 
+  geom_errorbar(alpha = 0.7) + 
+  coord_flip() + 
+  scale_color_manual(values = cbPalette) + 
+  ylab( 'Identification ability') + 
+  xlab( 'Subject ID')
+
+
+key_int %>% 
+  group_by( key) %>% 
+  transmute_at( .vars = c('Estimate', 'Est.Error', 'Q2.5', 'Q97.5'), .funs = function(x) -1*x )   %>% 
+  ungroup() %>%
+  mutate( key_f = factor( key, levels = key[ order( Estimate) ], ordered = T ))  %>%
+  left_join(train %>% distinct( key, key_family ), by = 'key') %>% 
+  ggplot( aes( x = key_f, y = Estimate, ymin = Q2.5, ymax = Q97.5, color = key_family)) + 
+  geom_point()  + 
+  geom_errorbar() + 
+  coord_flip() + 
+  scale_color_brewer(type = 'seq', palette = 'RdYlBu', name  = 'Family') + 
+  xlab( 'Species') +
+  ylab( 'Difficulty') + 
+  theme(axis.text.y = element_text(face = 'italic', size = 6)) + 
+  ggsave( filename = 'figures/Taxa_difficulty.png', width = pw, height = ph)
+
+  
 
 
 
