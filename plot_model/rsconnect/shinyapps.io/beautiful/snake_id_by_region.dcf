@@ -1,0 +1,12 @@
+name: snake_id_by_region
+title: snake_id_by_region
+username:
+account: beautiful
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2500662
+bundleId: 3313543
+url: https://beautiful.shinyapps.io/snake_id_by_region/
+when: 1593051482.96557
+asMultiple: FALSE
+asStatic: FALSE
