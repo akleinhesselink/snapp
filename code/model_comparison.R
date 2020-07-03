@@ -41,7 +41,12 @@ m6$fit@model_name <- 'm6'
 m6 <- add_criterion(m6, criterion = 'loo')
 
 ### 
-loo_compare( m1, m2, m3, m4)
-summary(m3)
-model_comparison <- loo_compare(loo_1, loo_2, loo_3, loo_4, loo_5, loo_6, criterion = 'loo')
-write_csv(model_comparison %>% as.data.frame(), path = 'output/model_comparison_table.csv')
+model_comparison <- loo_compare(m1, m2, m3, m4, m5, m6, criterion = 'loo')
+
+model_comparison <- model_comparison %>% as.data.frame() %>% mutate( model_name = row.names(.) )
+
+model_comparison$formula <- lapply( model_comparison$model_name, function(x) eval(parse(text = x))$formula )
+
+model_comparison$formula <- unlist( lapply( model_comparison$formula, function(x) as.character( x$formula[[3]][2] )  ) )
+
+write_csv(model_comparison, path = 'output/model_comparison_table.csv')
