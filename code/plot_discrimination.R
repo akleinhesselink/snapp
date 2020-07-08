@@ -10,6 +10,7 @@ ns <- 200  # number of posterior samples
 pw <- 8 # image width 
 ph <- 8 # image height 
 
+m3 %>% summary
 
 # Get posterior samples from random effects: 
 
@@ -62,6 +63,8 @@ disc_ranks <-
   mutate( disc_rank = cut( `50%`, breaks = quantile( `50%`, c(0, 0.05, 0.95, 1)), include.lowest = T, labels = c('Low discrimination taxa','Med. disc.', 'High discrimination taxa') ) ) %>%
   filter( disc_rank != 'Med. disc.') 
 
+disc_ranks 
+
 train %>% 
   left_join(disc_ranks, by = c('key', 'item')) %>%
   left_join(id_int, by = 'id') %>%
@@ -83,6 +86,15 @@ disc_info %>%
   coord_flip() + 
   theme(axis.text.y = element_text(face = 'italic', size = 6)) + 
   ggsave(filename = 'figures/discrimination_by_taxa_points.png', height = ph, width = pw )
+
+
+disc_info %>%
+  ggplot( aes( x = key_f, y = `50%`)) + 
+  geom_point() + 
+  xlab( 'Species' ) + 
+  ylab( 'Discrimination parameter') + 
+  coord_flip() + 
+  theme(axis.text.y = element_text(face = 'italic', size = 6))
 
 key_disc %>% 
   mutate(key_order = factor(key, levels = key[order(Estimate)], ordered = T)) %>%
@@ -142,8 +154,13 @@ key_int %>%
   theme(axis.text.y = element_text(face = 'italic', size = 6)) + 
   ggsave( filename = 'figures/Taxa_difficulty.png', width = pw, height = ph)
 
-  
 
 
-
+key_int %>% 
+  group_by( key ) %>% 
+  transmute_at( .vars = c('Estimate', 'Est.Error', 'Q2.5', 'Q97.5'), .funs = function(x) -1*x ) %>% 
+  ungroup() %>% 
+  left_join( key_disc, by = 'key') %>% 
+  ggplot( aes( x= Estimate.x, y= Estimate.y)) +geom_point() + 
+  ggrepel::geom_text_repel(aes( label = key))
 
