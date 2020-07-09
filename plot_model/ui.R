@@ -14,7 +14,7 @@ library(ggplot2)
 shinyUI(fluidPage(
   
   # Application title
-  titlePanel("Effects of Region"),
+  titlePanel("User Identification Accuracy"),
   
   # Sidebar with a slider input for number of bins 
   sidebarLayout(
