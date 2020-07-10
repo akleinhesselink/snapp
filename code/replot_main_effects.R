@@ -8,7 +8,11 @@ load('output/full_model_fit_3.rda')
 m3 <- temp_fit
 rm(temp_fit)
 
+pw <- 8 # image width 
+ph <- 8 # image height 
+
 my_cols <- RColorBrewer::brewer.pal(3, "Set2")
+qs <- c(0.5, 0.025, 0.975) # quantiles to save 
 
 # choose reference family
 fams <- sort( unique( m3$data$key_family ) )
@@ -32,8 +36,6 @@ p_four   <- 1 - inv.logit( disc*(Int[, 3] - mu ))
 p_fam <- p_two + p_three + p_four  
 p_gen <- p_three + p_four 
 p_spe <- p_four 
-
-qs <- c(0.5, 0.025, 0.975) # quantiles to save 
 
 score_df <-  
   data.frame( 
@@ -112,6 +114,11 @@ for( i in 1:length(fams) ){
 
 saveRDS(region_plots, 'output/region_plots.rds')
 saveRDS(family_plots, 'output/family_plots.rds')
+
+region_plots$Colubridae + ggsave('figures/Region_effect.png', width = pw, height = ph)
+family_plots$`North America` + ggsave('figures/Family_effect.png', width = pw, height = ph)
+
+
 
 # score_df %>%
 #   mutate( Score = as.character(Score)) %>%
