@@ -39,6 +39,14 @@ disc_info %>%
   theme(axis.text.y = element_text(face = 'italic', size = 6))  + 
   ggsave(filename = 'figures/discrimination_by_taxa_points.png', height = ph, width = pw )
 
+disc_info %>%
+  ggplot( aes( x = key_f, y = X50.)) + 
+  geom_point() + 
+  xlab( 'Species' ) + 
+  ylab( 'Discrimination parameter') + 
+  coord_flip() + 
+  theme(axis.text.y = element_text(face = 'italic', size = 6))
+  
 disc_ranks <- 
   disc_info %>% 
   ungroup() %>% 
@@ -109,6 +117,9 @@ key_diff <-
   mutate( species = row.names(.)) %>% 
   mutate( key_f = factor( species, levels = unique(species)[order(Estimate, decreasing = T)])) 
   
+
+
+
 key_diff %>% 
   ggplot( aes( x = key_f , y = Estimate , ymin = Q2.5, ymax = Q97.5)) + 
   geom_errorbar(width = 0.4, color = 'blue') + 
@@ -118,6 +129,16 @@ key_diff %>%
   coord_flip() + 
   theme(axis.text.y = element_text(face = 'italic', size = 6)) + 
   ggsave(filename = 'figures/difficulty_by_taxa.png', height = ph, width = pw )
+
+key_diff %>% 
+  ggplot( aes( x = key_f , y = Estimate , ymin = Q2.5, ymax = Q97.5)) + 
+  geom_errorbar(width = 0.4, color = 'blue') + 
+  geom_point() + 
+  xlab( 'Species' ) + 
+  ylab( 'Difficulty') + 
+  coord_flip() + 
+  theme(axis.text.y = element_text(face = 'italic', size = 6)) 
+  
 
 filename_key <- train %>% ungroup() %>% distinct(key, filename, difficulty)
 
@@ -184,7 +205,7 @@ train %>%
   xlab("Identification Accuracy Score")
 # 
 
-# ---------------------------  old stuff 
+# --------------------------- interpretation stuff 
 library(boot)
 
 Intercepts <- posterior_summary(m3, pars = 'b_Intercept')
@@ -194,7 +215,7 @@ key_difficulty <- posterior_summary(m3, pars = 'r_key')
 
 par(mfrow = c(1,2))
 x <- seq( -10, 10, length.out = 100)
-disc <- 0.5
+disc <- 0.8
 plot(x , inv.logit( disc*(Intercepts[1,1] - x)), type = 'l', ylab = 'Probability', xlab = 'Linear predictor')
 points(x, inv.logit( disc*(Intercepts[2,1] - x)) - inv.logit( disc*(Intercepts[1,1] - id_int[1,1])), type = 'l', col = 'blue')
 points(x , inv.logit(disc*(Intercepts[3,1] - x)) - inv.logit( disc*(Intercepts[2,1] - id_int[1,1])), type = 'l', col = 'green')
@@ -208,7 +229,7 @@ legend("topright", title = 'Score', legend = c(0, 1, 2, 3), col = c('black', 'bl
 title(main = 'low discrimination')
 
 # ------- 
-disc <- 2
+disc <- 1.5
 plot(x , inv.logit( disc*(Intercepts[1,1] - x)), type = 'l', ylab = 'Probability')
 points(x, inv.logit( disc*(Intercepts[2,1] - x)) - inv.logit( disc*(Intercepts[1,1] - id_int[1,1])), type = 'l', col = 'blue')
 points(x , inv.logit(disc*(Intercepts[3,1] - x)) - inv.logit( disc*(Intercepts[2,1] - id_int[1,1])), type = 'l', col = 'green')

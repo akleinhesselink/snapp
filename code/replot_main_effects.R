@@ -9,7 +9,7 @@ m3 <- temp_fit
 rm(temp_fit)
 
 pw <- 8 # image width 
-ph <- 8 # image height 
+ph <- 5 # image height 
 
 my_cols <- RColorBrewer::brewer.pal(3, "Set2")
 qs <- c(0.5, 0.025, 0.975) # quantiles to save 
@@ -117,6 +117,11 @@ saveRDS(family_plots, 'output/family_plots.rds')
 
 region_plots$Colubridae + ggsave('figures/Region_effect.png', width = pw, height = ph)
 family_plots$`North America` + ggsave('figures/Family_effect.png', width = pw, height = ph)
+
+
+region_plots$Elapidae
+
+family_plots$`North America` %+% (family_plots$`North America`$data %>% filter( ! Family %in% c(  "Boidae" ) ))
 
 
 
