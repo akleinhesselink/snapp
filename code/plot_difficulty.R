@@ -69,3 +69,5 @@ item_diff %>%
   theme(axis.text.y = element_text(face = 'italic', size = 6)) + 
   ggsave('figures/Difficulty_by_species_and_image.png', width = pw, height = ph)
 
+
+
