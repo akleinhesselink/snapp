@@ -88,3 +88,6 @@ for( i in 1:length(regs)){
 }
 
 saveRDS(repeat_plots, 'output/repeat_plots.RDS')
+
+repeat_plots$`North America`$Colubridae +
+  ggsave(filename = 'Taxa_repeat_effect.png', height = ph, width = pw)

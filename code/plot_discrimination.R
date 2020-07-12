@@ -6,7 +6,7 @@ load('output/full_model_fit_3.rda')
 m3 <- temp_fit
 rm(temp_fit)
 
-ns <- 500  # number of posterior samples
+ns <- 1000  # number of posterior samples to draw
 pw <- 8 # image width 
 ph <- 8 # image height 
 
@@ -37,7 +37,7 @@ disc_info %>%
   ylab( 'Discrimination parameter') + 
   coord_flip() + 
   theme(axis.text.y = element_text(face = 'italic', size = 6))  + 
-  ggsave(filename = 'figures/discrimination_by_taxa_points.png', height = ph, width = pw )
+  ggsave(filename = 'figures/Discrimination_by_species_and_image.png', height = ph, width = pw )
 
 disc_info %>%
   ggplot( aes( x = key_f, y = X50.)) + 
@@ -102,110 +102,10 @@ key_disc_summary %>%
   ylab( 'Discrimination parameter') + 
   coord_flip() + 
   theme(axis.text.y = element_text(face = 'italic', size = 6)) + 
-  ggsave(filename = 'figures/discrimination_by_taxa.png', height = ph, width = pw )
-
-#
-
-random_fx$id
-
-item_diff <- random_fx$item[ , , 1] * (-1) # convert to negative to get difficulty 
-key_diff <- random_fx$key[, , 1]*(-1) 
-
-key_diff <- 
-  key_diff %>% 
-  data.frame( ) %>% 
-  mutate( species = row.names(.)) %>% 
-  mutate( key_f = factor( species, levels = unique(species)[order(Estimate, decreasing = T)])) 
-  
+  ggsave(filename = 'figures/Discrimination_by_species.png', height = ph, width = pw )
 
 
-
-key_diff %>% 
-  ggplot( aes( x = key_f , y = Estimate , ymin = Q2.5, ymax = Q97.5)) + 
-  geom_errorbar(width = 0.4, color = 'blue') + 
-  geom_point() + 
-  xlab( 'Species' ) + 
-  ylab( 'Difficulty') + 
-  coord_flip() + 
-  theme(axis.text.y = element_text(face = 'italic', size = 6)) + 
-  ggsave(filename = 'figures/difficulty_by_taxa.png', height = ph, width = pw )
-
-key_diff %>% 
-  ggplot( aes( x = key_f , y = Estimate , ymin = Q2.5, ymax = Q97.5)) + 
-  geom_errorbar(width = 0.4, color = 'blue') + 
-  geom_point() + 
-  xlab( 'Species' ) + 
-  ylab( 'Difficulty') + 
-  coord_flip() + 
-  theme(axis.text.y = element_text(face = 'italic', size = 6)) 
-  
-
-filename_key <- train %>% ungroup() %>% distinct(key, filename, difficulty)
-
-item_samples <- 
-  posterior_samples(m3, par = c('r_item\\[')) %>% 
-  gather( item, Intercept, starts_with('r')) %>% 
-  mutate( filename = str_extract(item, '[0-9.]+.jpg' )) %>% 
-  left_join(filename_key, by = 'filename') %>% 
-  select( - item ) %>% 
-  group_by( filename ) %>%
-  mutate( iteration = row_number()) %>% 
-  ungroup()
-
-key_samples <- 
-  posterior_samples(m3, par = c('r_key\\[')) %>% 
-  gather( key, Intercept, starts_with('r')) %>%
-  mutate( key = str_extract( key , '[A-Z][a-z.]+')) %>%
-  mutate( key = str_replace(key, '\\.', ' ')) %>% 
-  group_by( key ) %>% 
-  mutate( iteration = row_number()) %>% 
-  ungroup()
-
-cols <- scales::hue_pal()(2)
-
-item_samples %>% 
-  left_join(key_samples, by = c('key', 'iteration')) %>%
-  mutate( Intercept = -1*(Intercept.x + Intercept.y)) %>% 
-  select( key, filename, difficulty, iteration, Intercept) %>% 
-  group_by( key, filename, difficulty ) %>%
-  summarise( Intercept = quantile( Intercept, qs[1]), Q2.5 = quantile(Intercept, qs[2]), Q97.5 = quantile(Intercept, qs[3])) %>% 
-  left_join(key_diff, by = c('key'='species')) %>%
-  ggplot( aes( x = key_f, y = Intercept, color = difficulty, ymin = Q2.5.y, ymax = Q97.5.y )) + 
-  geom_point() + 
-  scale_color_manual(values = rev(cols), name = 'A priori image\ndifficulty class') + 
-  xlab( 'Species' ) + 
-  ylab( 'Item Difficulty Parameter') + 
-  coord_flip() + 
-  theme(axis.text.y = element_text(face = 'italic', size = 6)) +
-  ggsave(filename = 'figures/image_difficulty_vs_estimated_difficulty.png', height = ph, width = pw )
-
-item_samples %>% 
-  mutate( Estimate = -1*Intercept ) %>% 
-  group_by( filename, difficulty) %>% 
-  summarise( Q50 = quantile(Estimate, qs[1])) %>%
-  ggplot(aes( x = Q50, y = difficulty,  fill = difficulty )) + 
-  ggridges::geom_density_ridges(alpha = 0.7) + 
-  xlab( 'Item Difficulty Parameter') + 
-  ylab( '') +
-  scale_fill_manual(values = rev(cols), name = 'A priori\ndifficulty class') +
-  scale_color_manual(values = rev(cols), name = 'A priori image\ndifficulty class') + 
-  ggsave(filename = 'figures/item_difficulty_distribution_by_difficulty_class.png', height = ph, width = pw )
-
-# actual data plot 
-train %>% 
-  group_by( difficulty, score ) %>%
-  summarise( n = n() ) %>%
-  group_by(difficulty ) %>% 
-  mutate( prop = n/sum(n)) %>% 
-  ungroup() %>% 
-  ggplot( aes( x = score, y = prop, fill = difficulty)) + 
-  geom_bar(stat = 'identity', position = position_dodge()) + 
-  scale_fill_manual(values = rev(cols), name = "A priori image\ndifficulty class") + 
-  ylab("Proportion of responses") + 
-  xlab("Identification Accuracy Score")
-# 
-
-# --------------------------- interpretation stuff 
+# --------------------------- visualize discrimination
 library(boot)
 
 Intercepts <- posterior_summary(m3, pars = 'b_Intercept')
