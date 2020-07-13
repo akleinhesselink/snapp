@@ -40,13 +40,17 @@ key_diff %>%
     theme(axis.text.y = element_text(face = 'italic', size = 6)) + 
   ggsave('figures/Difficulty_by_species.png', width = pw, height = ph)
   
+
 item_info <- 
   train %>% 
   group_by( key ) %>% 
   filter( photo_region == photo_region[ which.max(n_distinct(item))]) %>% 
   ungroup() %>% 
   distinct(key_family, photo_region, key, item, difficulty) %>% 
-  mutate( taxa_repeat = 1 , home_region = T) 
+  mutate( taxa_repeat = 1 , home_region = T) %>%
+  mutate( quality = factor(difficulty, labels = c('High', 'Low')))
+
+
 
 item_diff <- posterior_linpred(m3, newdata = item_info, re.form = ~ (1|key) + (1|item), nsamples = ns )
 
@@ -60,12 +64,12 @@ item_diff <-
 cols <- scales::hue_pal()(2)
 
 item_diff %>% 
-  ggplot( aes( x = key_f, y = X50., color = difficulty)) + 
+  ggplot( aes( x = key_f, y = X50., color = quality)) + 
   geom_point() + 
   ylab( 'Difficulty' ) +
   xlab( 'Species') + 
   coord_flip() + 
-  scale_color_manual(values = rev(cols), name = 'Image\ndifficulty class') + 
+  scale_color_manual(values = rev(cols), name = 'Image Quality') + 
   theme(axis.text.y = element_text(face = 'italic', size = 6)) + 
   ggsave('figures/Difficulty_by_species_and_image.png', width = pw, height = ph)
 

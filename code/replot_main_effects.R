@@ -64,7 +64,7 @@ accuracy_df <-
   mutate( `Family` = key_family, 
           Region = photo_region, 
           Home = factor( home_region, 
-                           labels = c('Outside Home Region', 'Inside Home Region') ))  
+                           labels = c('A)   Outside Home Region', 'B)   Inside Home Region') ))  
 
 family_plots <- list()
 
@@ -84,8 +84,8 @@ for( i in 1:length(regs) ){
     scale_color_manual(values = my_cols) + 
     ylab( 'Probability') + 
     ylim(0,1) + 
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
-  
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), strip.text = element_text(hjust = 0))
+      
   names(family_plots)[i] <- regs[i] 
 }
 
@@ -107,19 +107,25 @@ for( i in 1:length(fams) ){
     scale_color_manual(values = my_cols) + 
     ylab( 'Probability') + 
     ylim(0,1) + 
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), strip.text = element_text(hjust = 0))
   
   names(region_plots)[i] <- fams[i]
 }
 
+
 saveRDS(region_plots, 'output/region_plots.rds')
 saveRDS(family_plots, 'output/family_plots.rds')
 
-region_plots$Colubridae + ggsave('figures/Region_effect.png', width = pw, height = ph)
-family_plots$`North America` + ggsave('figures/Family_effect.png', width = pw, height = ph)
 
 
-region_plots$Elapidae
+
+
+ggsave(region_plots$Colubridae, filename = 'figures/Region_effect.png', width = pw, height = ph)
+ggsave( family_plots$`North America`, filename = 'figures/Family_effect.png', width = pw, height = ph)
+
+
+family_plots$`North America` %+% 
+  (family_plots$`North America`$data %>% filter( ! Family %in% c(  "Boidae" ) ))
 
 family_plots$`North America` %+% (family_plots$`North America`$data %>% filter( ! Family %in% c(  "Boidae" ) ))
 
