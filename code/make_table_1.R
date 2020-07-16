@@ -18,6 +18,8 @@ my_table$fixed %>%
 
 my_table
 
+m3$model
+
 sdev_id <- 
   my_table$random$id %>%
   data.frame() %>% 

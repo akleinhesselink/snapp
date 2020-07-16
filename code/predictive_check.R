@@ -13,17 +13,51 @@ ph <- 8 # image height
 # Get posterior samples from random effects: 
 qs <- c(0.5, 0.025, 0.975) # quantiles to save 
 
-pp_check_train <- 
-  posterior_linpred(m3, newdata = train, nsamples = ns) %>% 
-  apply( 2, quantile, qs) %>% t() %>% 
-  data.frame() %>% 
-  bind_cols(train ) 
+yhat.train <- posterior_predict(m3, newdata = train, nsamples = ns)
+yhat.test  <- posterior_predict(m3, newdata = test, nsamples = ns)
 
-pp_check_test <- 
-  posterior_linpred(m3, newdata = test, nsamples = ns) %>% 
-  apply( 2, quantile, qs) %>% t() %>% 
-  data.frame() %>% 
-  bind_cols(test) 
+y_test <- as.numeric( test$score ) # observed in testing data 
+y_train <- as.numeric(train$score) # observed in training data 
+
+pp_check_fam_in_samp <- bayesplot::ppc_bars_grouped(y_train, 
+                                                    yrep = 
+                                                      yhat.train, prob = 0.95, 
+                                                    group = train$key_family, freq = F, 
+                                                    fatten = 1, size = 0.5)
+
+ggsave( pp_check_fam_in_samp, filename = 'figures/pp_check_family_in.png', height = 4, width = 6)
+
+
+pp_check_fam_oo_samp <- bayesplot::ppc_bars_grouped(y_test, yrep = yhat.test, prob = 0.95, group = test$key_family, freq = F, 
+                            fatten = 1, size = 0.5)
+
+ggsave( pp_check_fam_oo_samp, filename = 'figures/pp_check_family_out.png', height = 4, width = 6)
+
+pp_check_species_oo_samp <- bayesplot::ppc_bars_grouped(y_train, yrep = yhat.train, prob = 0.95, group = train$key, freq = F, 
+                                                    fatten = 1, size = 0.5, facet_args = list( ncol = 5))
+
+pp_check_species_oo_samp$data
+
+
+pp_check_train <- 
+  posterior_predict(m3, newdata = train, nsamples = ns) 
+
+pp_check_by_sp <- split( pp_check_train %>% t() %>% data.frame(), f = train$key)
+
+my_summarize <- function( x ) { 
+  try( x %>%  
+    apply( 2, function(y) table( y) / length(y)) %>% 
+             apply( 1, function( z ) quantile( z, qs )) 
+  )
+}
+pp_exp_by_sp <- lapply( pp_check_by_sp, my_summarize)
+prop_observed_by_species <- lapply ( ( train %>% split( f = train$key  )), function( x ) table( as.numeric(x$score) )/length( x$score )  )
+
+pp_exp_by_sp$`Acanthophis antarcticus`
+prop_observed_by_species$`Acanthophis antarcticus`
+
+barplot( unlist( pp_check_by_sp$`Acanthophis antarcticus` ), freq = F )
+hist( as.numeric( train$score[train$key == 'Acanthophis antarcticus']))
 
 # aggregate to species
 pp_check_by_species_train <- 
