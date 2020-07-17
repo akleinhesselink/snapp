@@ -1,7 +1,7 @@
-Candidate Model,delta_looic,looic,se_looic,Out of Sample RMSE 1,Out of Sample RMSE 2,Model Formula
-m3,0,86500.17,344.7,0.92,1.2,key_family + photo_region + home_region + taxa_repeat + photo_region:home_region
-m1,-36.35,86536.51,344.6,0.92,1.19,key_family + photo_region + home_region + taxa_repeat + difficulty + photo_region:home_region
-m4,-277.26,86777.43,341.61,0.92,1.2,key_family + photo_region + home_region + taxa_repeat
-m2,-321.79,86821.96,341.53,0.92,1.19,key_family + photo_region + home_region + taxa_repeat + difficulty
-m6,-3430.65,89930.82,332.72,0.96,1.22,key_family + photo_region + taxa_repeat
-m5,-3459.39,89959.56,332.73,0.96,1.21,key_family + photo_region + taxa_repeat + difficulty
+Candidate Model,delta_looic,looic,se_looic,R[out]^2,R[out*]^2,MEA[out],MEA[out*],Model Formula
+3,0,86500.17,344.7,0.47,0.36,0.83,1.17,key_family + photo_region + home_region + taxa_repeat + photo_region:home_region
+1,-36.35,86536.51,344.6,0.47,0.36,0.83,1.16,key_family + photo_region + home_region + taxa_repeat + difficulty + photo_region:home_region
+4,-277.26,86777.43,341.61,0.47,0.36,0.84,1.17,key_family + photo_region + home_region + taxa_repeat
+2,-321.79,86821.96,341.53,0.47,0.36,0.84,1.16,key_family + photo_region + home_region + taxa_repeat + difficulty
+6,-3430.65,89930.82,332.72,0.45,0.34,0.89,1.22,key_family + photo_region + taxa_repeat
+5,-3459.39,89959.56,332.73,0.45,0.34,0.89,1.21,key_family + photo_region + taxa_repeat + difficulty

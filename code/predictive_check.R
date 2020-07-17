@@ -21,8 +21,7 @@ yhat.test  <- posterior_predict(m3, newdata = test, nsamples = ns)
 y_test <- as.numeric( test$score ) # observed in testing data 
 y_train <- as.numeric(train$score) # observed in training data 
 
-pp_check_fam_in_samp <- ppc_bars_grouped(y_train, 
-                                                    yrep = 
+pp_check_fam_in_samp <- ppc_bars_grouped(y_train,  yrep = 
                                                       yhat.train, prob = 0.95, 
                                                     group = train$key_family, freq = F, 
                                                     fatten = 1, size = 0.5)
@@ -37,9 +36,6 @@ ggsave( pp_check_fam_oo_samp, filename = 'figures/pp_check_family_out.png', heig
 
 pp_check_species_oo_samp <- ppc_bars_grouped(y_train, yrep = yhat.train, prob = 0.95, group = train$key, freq = F, 
                                                     fatten = 1, size = 0.5, facet_args = list( ncol = 5))
-
-pp_check_species_oo_samp$data
-
 
 pp_check_train <- 
   posterior_predict(m3, newdata = train, nsamples = ns) 
