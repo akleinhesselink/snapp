@@ -1,6 +1,8 @@
 rm(list = ls() )
 library(brms)
 library(tidyverse)
+library(bayesplot)
+
 load('output/training_testing_data.rda')
 load('output/full_model_fit_3.rda')
 m3 <- temp_fit
@@ -19,7 +21,7 @@ yhat.test  <- posterior_predict(m3, newdata = test, nsamples = ns)
 y_test <- as.numeric( test$score ) # observed in testing data 
 y_train <- as.numeric(train$score) # observed in training data 
 
-pp_check_fam_in_samp <- bayesplot::ppc_bars_grouped(y_train, 
+pp_check_fam_in_samp <- ppc_bars_grouped(y_train, 
                                                     yrep = 
                                                       yhat.train, prob = 0.95, 
                                                     group = train$key_family, freq = F, 
@@ -28,12 +30,12 @@ pp_check_fam_in_samp <- bayesplot::ppc_bars_grouped(y_train,
 ggsave( pp_check_fam_in_samp, filename = 'figures/pp_check_family_in.png', height = 4, width = 6)
 
 
-pp_check_fam_oo_samp <- bayesplot::ppc_bars_grouped(y_test, yrep = yhat.test, prob = 0.95, group = test$key_family, freq = F, 
+pp_check_fam_oo_samp <- ppc_bars_grouped(y_test, yrep = yhat.test, prob = 0.95, group = test$key_family, freq = F, 
                             fatten = 1, size = 0.5)
 
 ggsave( pp_check_fam_oo_samp, filename = 'figures/pp_check_family_out.png', height = 4, width = 6)
 
-pp_check_species_oo_samp <- bayesplot::ppc_bars_grouped(y_train, yrep = yhat.train, prob = 0.95, group = train$key, freq = F, 
+pp_check_species_oo_samp <- ppc_bars_grouped(y_train, yrep = yhat.train, prob = 0.95, group = train$key, freq = F, 
                                                     fatten = 1, size = 0.5, facet_args = list( ncol = 5))
 
 pp_check_species_oo_samp$data

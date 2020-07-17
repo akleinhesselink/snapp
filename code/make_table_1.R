@@ -16,10 +16,6 @@ my_table$fixed %>%
   select( `Fixed Effect`, Estimate:Tail_ESS) %>% 
   pander::pander()
 
-my_table
-
-m3$model
-
 sdev_id <- 
   my_table$random$id %>%
   data.frame() %>% 
@@ -41,7 +37,4 @@ sdev_species <-
   mutate( `Group-Level Effect` = 'Species') %>%
   select(`Group-Level Effect`, Parameter, Estimate:Tail_ESS) 
 
-sdev_id
-
-test <- print( my_table )
 
