@@ -27,5 +27,15 @@ shinyServer(function(input, output) {
             legend.title = element_text(size = 20))  
     
   })
-
+  
+  output$familyPlot <- renderPlot( { 
+    reference_region <- input$ref_region
+    
+  plot_obj[[reference_family]] + 
+    theme(axis.title = element_text(size = 20), 
+          axis.text = element_text(size = 14, angle = 45), 
+          strip.text = element_text(size = 14), 
+          legend.text = element_text( size = 14), 
+          legend.title = element_text(size = 20)) 
+    })
 })
