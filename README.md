@@ -4,6 +4,8 @@
 
 For more information on SNAPP see: https://www.unige.ch/medecine/isg/en/research/one-health/snapp-first-medical-decisionsupport-tool-for-snake-identification-based-on-artificial-intelligence-and-remote-collaborative-expe/
 
+[![DOI](https://zenodo.org/badge/276948193.svg)](https://zenodo.org/badge/latestdoi/276948193)
+
 ### Analyses: 
 
 To replicate analyses in the manuscript, 1) open the "snapp.Rproj" file in Rstudio; 2) run the "snapp.R" master script in the main directory. __WARNING__ this script runs several large Bayesian models and will take days to run. 
